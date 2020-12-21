@@ -113,7 +113,7 @@ const App: React.FC = () => {
     openingsTrie?.toggleOpening(toggledOpening);
     
     const newOpenings = openings.map(opening => {
-      if (opening === toggledOpening) {
+      if (opening.name === toggledOpening.name && opening.eco === toggledOpening.eco) {
         return {
           ...opening,
           isActive: newOpeningState,
