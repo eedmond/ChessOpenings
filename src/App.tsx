@@ -4,24 +4,34 @@ import Chessboard from "chessboardjsx";
 import { ChessInstance, ShortMove } from "chess.js";
 import { OpeningsTrie } from "./OpeningsTrie";
 import { Opening } from "./Opening";
-import fs from "fs";
 
 const Chess = require("chess.js");
 
-function InitializeOpenings(chessBoard: ChessInstance): OpeningsTrie {
+function InitializeOpenings(chessBoard: ChessInstance): Promise<OpeningsTrie> {
   // Parse openings.tsv to create all the Opening variables
   let openings: Opening[] = [];
-  let file = fs.readFileSync("openings.tsv", "utf8");
-  file.split('\n').forEach(dataLine => {
-    openings.push(new Opening(dataLine));
-  });
+  return fetch("/openings.tsv").then(res =>
+    res.text()).then(data => {
+      data.split('\n').forEach(dataLine => {
+        openings.push(new Opening(dataLine));
+      });
 
-  return new OpeningsTrie(openings, chessBoard);
+      return new OpeningsTrie(openings, chessBoard);
+    });
 }
 
 function makeMove(move: ShortMove, chessBoard: ChessInstance, setFen: React.Dispatch<React.SetStateAction<string>>) {
   chessBoard.move(move);
   setFen(chessBoard.fen());
+}
+
+function announceOpeningAndReset(openingsTrie: OpeningsTrie, chessBoard: ChessInstance, setFen: React.Dispatch<React.SetStateAction<string>>) {
+  document.writeln(openingsTrie?.getCompletedOpeningsFromCurrentPosition()[0].name!);
+
+  setTimeout(() => {
+    chessBoard.reset();
+    setFen(chessBoard.fen());
+  });
 }
 
 const App: React.FC = () => {
@@ -30,21 +40,28 @@ const App: React.FC = () => {
   );
 
   const [fen, setFen] = useState(chessBoard.fen());
-  const openingsTrie = InitializeOpenings(chessBoard);
+  let openingsTrie: OpeningsTrie | undefined = undefined;
+  InitializeOpenings(chessBoard).then(data => {
+    openingsTrie = data;
+  });
 
   const handleMove = (move: ShortMove) => {
-    if (openingsTrie.isValidMove(move) && chessBoard.move(move)) {
+    if (openingsTrie?.isValidMove(move) && chessBoard.move(move)) {
       setFen(chessBoard.fen());
 
       setTimeout(() => {
-        if (openingsTrie.hasMovesToMake()) {
+        if (openingsTrie?.hasMovesToMake()) {
           move = openingsTrie.getNextMove();
           makeMove(move, chessBoard, setFen);
+        } else {
+          announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
         }
 
         // TODO: Update the list of possible openings from current position
         // TODO: Update the list of completed openings from current position
       }, 300);
+    } else if (!openingsTrie?.hasMovesToMake()) {
+      announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
     }
   };
 

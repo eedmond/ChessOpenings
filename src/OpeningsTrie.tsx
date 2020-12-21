@@ -1,6 +1,6 @@
 import { Opening } from "./Opening";
 import { TrieNode } from "./TrieNode";
-import { ChessInstance, ShortMove } from "chess.js";
+import { ChessInstance, ShortMove, Square } from "chess.js";
 
 export class OpeningsTrie {
     // Referenced to know the state of the board and the moves made
@@ -21,11 +21,11 @@ export class OpeningsTrie {
     private addOpening(opening: Opening) {
         let currentNode = this.rootNode;
         opening.moves.forEach(move => {
-            if (!currentNode.nextMoves.has(move)) {
-                currentNode.nextMoves.set(move, new TrieNode());
+            if (!currentNode.nextMoves.has(`${move.from}${move.to}`)) {
+                currentNode.nextMoves.set(`${move.from}${move.to}`, new TrieNode());
             }
 
-            currentNode = currentNode.nextMoves.get(move)!;
+            currentNode = currentNode.nextMoves.get(`${move.from}${move.to}`)!;
 
             if (opening.isActive) {
               currentNode.isActive = true;
@@ -37,13 +37,13 @@ export class OpeningsTrie {
   
     // Returns true if move is part of a valid opening
     isValidMove(move: ShortMove) {
-      return this.getCurrentTrieNode().nextMoves.has(move);
+      return this.getCurrentTrieNode().nextMoves.has(this.moveToString(move));
     }
   
     // Returns a computer move selected randomly from the available openings
     getNextMove(): ShortMove {
       let moves = Array.from(this.getCurrentTrieNode().nextMoves.keys());
-      return moves[Math.floor(Math.random() * moves.length)];
+      return this.stringToMove(moves[Math.floor(Math.random() * moves.length)]);
     }
   
     // Returns true if there are any remaining moves that follow saved openings lines
@@ -66,8 +66,8 @@ export class OpeningsTrie {
     private getCurrentTrieNode(): TrieNode {
       let currentNode = this.rootNode;
 
-      this.chessBoard.moves({ verbose: true }).forEach(move => {
-        currentNode = currentNode.nextMoves.get(move)!;
+      this.chessBoard.history({ verbose: true }).forEach(move => {
+        currentNode = currentNode.nextMoves.get(this.moveToString(move))!;
       });
 
       return currentNode;
@@ -88,5 +88,16 @@ export class OpeningsTrie {
       } while(!iterator.done);
 
       return openings;
+    }
+
+    private moveToString(move: ShortMove): string {
+      return `${move.from}${move.to}`;
+    }
+
+    private stringToMove(str: string): ShortMove {
+      return {
+        from: str.substr(0, 2) as Square,
+        to: str.substr(2, 2) as Square
+      }
     }
   }

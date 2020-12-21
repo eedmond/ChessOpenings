@@ -1,8 +1,7 @@
 import { Opening } from "./Opening";
-import { ShortMove } from "chess.js";
 
 export class TrieNode {
     openings: Opening[] = [];
-    nextMoves: Map<ShortMove, TrieNode> = new Map();
+    nextMoves: Map<string, TrieNode> = new Map();
     isActive = false;
 }
