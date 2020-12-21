@@ -1,74 +1,22 @@
 import React, { useState } from "react";
 import "./App.css";
 import Chessboard from "chessboardjsx";
-import { ChessInstance, ShortMove, Square } from "chess.js";
+import { ChessInstance, ShortMove } from "chess.js";
+import { OpeningsTrie } from "./OpeningsTrie";
+import { Opening } from "./Opening";
+import fs from "fs";
 
 const Chess = require("chess.js");
 
 function InitializeOpenings(chessBoard: ChessInstance): OpeningsTrie {
+  // Parse openings.tsv to create all the Opening variables
+  let openings: Opening[] = [];
+  let file = fs.readFileSync("openings.tsv", "utf8");
+  file.split('\n').forEach(dataLine => {
+    openings.push(new Opening(dataLine));
+  });
 
-  // TODO: Parse openings.tsv to create all the Opening variables
-  return new OpeningsTrie([], chessBoard);
-}
-
-class OpeningsTrie {
-  // Referenced to know the state of the board and the moves made
-  chessBoard: ChessInstance;
-
-  constructor(openings: Opening[], chess: ChessInstance) {
-    // TODO: create trie from openings
-    this.chessBoard = chess;
-  }
-
-  // Returns true if move is part of a valid opening
-  isValidMove(move: ShortMove) {
-    // TODO
-    return true;
-  }
-
-  // Returns a computer move selected randomly from the available openings
-  getNextMove(): ShortMove {
-    // TODO
-    return { from: 'a1', to: 'a2' };
-  }
-
-  // Returns true if there are any remaining moves that follow saved openings lines
-  hasMovesToMake() {
-    // TODO
-    return true;
-  }
-
-  // Returns the list of (incomplete) openings that are possible from the current move sequence
-  getPossibleOpeningsFromCurrentPosition(): Opening[] {
-    // TODO
-    return [];
-  }
-
-  // Returns the list of openings that are just completed from the current move sequence
-  getCompletedOpeningsFromCurrentPosition(): Opening[] {
-    // TODO
-    return [];
-  }
-}
-
-class Opening {
-  name: string;
-  eco: string;
-  fen: string;
-  moves: ShortMove[];
-
-  // Created from a line from openings.tsv
-  constructor(data: string) {
-    let splitData = data.split('\t');
-    this.eco = splitData[0];
-    this.name = splitData[1];
-    this.fen = splitData[2];
-
-    this.moves = splitData[3].split(' ').map(move => ({
-        from: move.substr(0, 2) as Square,
-        to: move.substr(2, 2) as Square
-      }));
-  }
+  return new OpeningsTrie(openings, chessBoard);
 }
 
 function makeMove(move: ShortMove, chessBoard: ChessInstance, setFen: React.Dispatch<React.SetStateAction<string>>) {
