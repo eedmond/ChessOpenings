@@ -20,6 +20,16 @@ function InitializeOpenings(chessBoard: ChessInstance): Promise<OpeningsTrie> {
     });
 }
 
+// Test function for validating enabling/disabling openings
+// function enableAndDisableOpenings(openingsTrie: OpeningsTrie, openings: Opening[]) {
+//   openings.forEach(opening => {
+//     openingsTrie.disableOpening(opening);
+//   })
+
+//   openingsTrie.enableOpening(openings[2]);
+//   openingsTrie.enableOpening(openings[200]);
+// }
+
 function makeMove(move: ShortMove, chessBoard: ChessInstance, setFen: React.Dispatch<React.SetStateAction<string>>) {
   chessBoard.move(move);
   setFen(chessBoard.fen());
@@ -49,6 +59,7 @@ const App: React.FC = () => {
     if (openingsTrie?.isValidMove(move) && chessBoard.move(move)) {
       setFen(chessBoard.fen());
 
+      // Respond with computer move or display completed opening after delay
       setTimeout(() => {
         if (openingsTrie?.hasMovesToMake()) {
           move = openingsTrie.getNextMove();
@@ -57,11 +68,16 @@ const App: React.FC = () => {
           announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
         }
 
-        // TODO: Update the list of possible openings from current position
-        // TODO: Update the list of completed openings from current position
+        // Temporary: Add a delay if the computer ended the opening
+        setTimeout(() => {
+          if (!openingsTrie?.hasMovesToMake()) {
+            announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
+          }
+        }, 1000);
+
+        // TODO: Display the list of possible openings from current position
+        // TODO: Display the list of completed openings from current position
       }, 300);
-    } else if (!openingsTrie?.hasMovesToMake()) {
-      announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
     }
   };
 
