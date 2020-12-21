@@ -2,47 +2,66 @@ import React, { useState } from "react";
 import "./App.css";
 import Chessboard from "chessboardjsx";
 import { ChessInstance, ShortMove } from "chess.js";
+import { OpeningsTrie } from "./OpeningsTrie";
+import { Opening } from "./Opening";
 
 const Chess = require("chess.js");
-const caroKannMoves: ShortMove[] = [
-  { from: 'e2', to: 'e4' }, { from: 'c7', to: 'c6' },  { from: 'd2', to: 'd4' },  { from: 'd7', to: 'd5' },  { from: 'b1', to: 'd2' },  { from: 'd5', to: 'e4' },  { from: 'd2', to: 'e4' },  { from: 'c8', to: 'f5' },  { from: 'e4', to: 'g3' },  { from: 'f5', to: 'g6' },  { from: 'h2', to: 'h4' },  { from: 'h7', to: 'h6' },  { from: 'g1', to: 'f3' },  { from: 'b8', to: 'd7' },  { from: 'h4', to: 'h5' },  { from: 'g6', to: 'h7' },  { from: 'f1', to: 'd3' },  { from: 'h7', to: 'd3' },  { from: 'd1', to: 'd3' },  { from: 'g8', to: 'f6' },  { from: 'c1', to: 'd2' },  { from: 'e7', to: 'e6' },  { from: 'e1', to: 'c1' },  { from: 'f8', to: 'd6' }
-];
-let moveIndex = 0;
 
-function makeCaroKannMove(chess: ChessInstance, setFen: React.Dispatch<React.SetStateAction<string>>) {
-  chess.move(caroKannMoves[moveIndex++]);
-  setFen(chess.fen());
+function InitializeOpenings(chessBoard: ChessInstance): Promise<OpeningsTrie> {
+  // Parse openings.tsv to create all the Opening variables
+  let openings: Opening[] = [];
+  return fetch("/openings.tsv").then(res =>
+    res.text()).then(data => {
+      data.split('\n').forEach(dataLine => {
+        openings.push(new Opening(dataLine));
+      });
+
+      return new OpeningsTrie(openings, chessBoard);
+    });
 }
 
-function makeRandomMove(chess: ChessInstance, setFen: React.Dispatch<React.SetStateAction<string>>) {
-  const moves = chess.moves();
+function makeMove(move: ShortMove, chessBoard: ChessInstance, setFen: React.Dispatch<React.SetStateAction<string>>) {
+  chessBoard.move(move);
+  setFen(chessBoard.fen());
+}
 
-  if (moves.length > 0) {
-    const computerMove = moves[Math.floor(Math.random() * moves.length)];
-    chess.move(computerMove);
-    setFen(chess.fen());
-  }
+function announceOpeningAndReset(openingsTrie: OpeningsTrie, chessBoard: ChessInstance, setFen: React.Dispatch<React.SetStateAction<string>>) {
+  document.writeln(openingsTrie?.getCompletedOpeningsFromCurrentPosition()[0].name!);
+
+  setTimeout(() => {
+    chessBoard.reset();
+    setFen(chessBoard.fen());
+  });
 }
 
 const App: React.FC = () => {
-  const [chess] = useState<ChessInstance>(
+  const [chessBoard] = useState<ChessInstance>(
     new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
   );
 
-  const [fen, setFen] = useState(chess.fen());
+  const [fen, setFen] = useState(chessBoard.fen());
+  let openingsTrie: OpeningsTrie | undefined = undefined;
+  InitializeOpenings(chessBoard).then(data => {
+    openingsTrie = data;
+  });
 
   const handleMove = (move: ShortMove) => {
-    if (chess.move(move)) {
-      setTimeout(() => {
-        if (move.to === caroKannMoves[moveIndex].to && move.from === caroKannMoves[moveIndex].from) {
-          ++moveIndex;
-          makeCaroKannMove(chess, setFen);
-        } else {
-          makeRandomMove(chess, setFen);
-        }
-      }, 300);
+    if (openingsTrie?.isValidMove(move) && chessBoard.move(move)) {
+      setFen(chessBoard.fen());
 
-      setFen(chess.fen());
+      setTimeout(() => {
+        if (openingsTrie?.hasMovesToMake()) {
+          move = openingsTrie.getNextMove();
+          makeMove(move, chessBoard, setFen);
+        } else {
+          announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
+        }
+
+        // TODO: Update the list of possible openings from current position
+        // TODO: Update the list of completed openings from current position
+      }, 300);
+    } else if (!openingsTrie?.hasMovesToMake()) {
+      announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
     }
   };
 
