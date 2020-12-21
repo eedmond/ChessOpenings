@@ -50,34 +50,58 @@ const App: React.FC = () => {
   );
 
   const [fen, setFen] = useState(chessBoard.fen());
-  let openingsTrie: OpeningsTrie | undefined = undefined;
+  const [orientation, setOrientation] = useState<'white' | 'black'>('white');
+  let isUsersTurn = true;
+  let computerMoveTimer: NodeJS.Timer | undefined = undefined;
+
+  const [openingsTrie, setOpeningsTrie] = useState< OpeningsTrie | undefined>(undefined);
   InitializeOpenings(chessBoard).then(data => {
-    openingsTrie = data;
+    setOpeningsTrie(data);
   });
+
+  const makeComputerMove = () => {
+    // Respond with computer move or display completed opening after delay
+    isUsersTurn = false;
+    computerMoveTimer = setTimeout(() => {
+      if (isUsersTurn) return;
+      isUsersTurn = true;
+
+      if (openingsTrie?.hasMovesToMake()) {
+        const move = openingsTrie.getNextMove();
+        makeMove(move, chessBoard, setFen);
+      } else {
+        announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
+      }
+
+      // Temporary: Add a delay if the computer ended the opening
+      setTimeout(() => {
+        if (!openingsTrie?.hasMovesToMake()) {
+          announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
+        }
+      }, 1000);
+
+      // TODO: Display the list of possible openings from current position
+      // TODO: Display the list of completed openings from current position
+    }, 300);
+  }
 
   const handleMove = (move: ShortMove) => {
     if (openingsTrie?.isValidMove(move) && chessBoard.move(move)) {
       setFen(chessBoard.fen());
+      makeComputerMove();
+    }
+  };
 
-      // Respond with computer move or display completed opening after delay
-      setTimeout(() => {
-        if (openingsTrie?.hasMovesToMake()) {
-          move = openingsTrie.getNextMove();
-          makeMove(move, chessBoard, setFen);
-        } else {
-          announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
-        }
-
-        // Temporary: Add a delay if the computer ended the opening
-        setTimeout(() => {
-          if (!openingsTrie?.hasMovesToMake()) {
-            announceOpeningAndReset(openingsTrie!, chessBoard, setFen);
-          }
-        }, 1000);
-
-        // TODO: Display the list of possible openings from current position
-        // TODO: Display the list of completed openings from current position
-      }, 300);
+  const onFlipBoard = () => {
+    isUsersTurn = !isUsersTurn;
+    setOrientation((orientation === 'white' ? 'black' : 'white'));
+    
+    if (computerMoveTimer) {
+      clearTimeout(computerMoveTimer);
+      computerMoveTimer = undefined;
+    }
+    if (!isUsersTurn) {
+      makeComputerMove();
     }
   };
 
@@ -85,6 +109,7 @@ const App: React.FC = () => {
     <div className="flex-center">
       <h1>Random Chess</h1>
       <Chessboard
+        orientation={orientation}
         width={400}
         position={fen}
         onDrop={(move) =>
@@ -95,6 +120,7 @@ const App: React.FC = () => {
           })
         }
       />
+      <button onClick={() => onFlipBoard()}>Flip</button>
     </div>
   );
 };
