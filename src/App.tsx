@@ -32,6 +32,9 @@ function announceOpeningAndReset(openingsTrie: OpeningsTrie, chessBoard: ChessIn
   });
 }
 
+let computerMoveTimer: NodeJS.Timer | undefined = undefined;
+let isUsersTurn = true;
+
 const App: React.FC = () => {
   const [chessBoard] = useState<ChessInstance>(
     new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -39,12 +42,9 @@ const App: React.FC = () => {
 
   const [fen, setFen] = useState(chessBoard.fen());
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
-  let isUsersTurn = true;
-  let computerMoveTimer: NodeJS.Timer | undefined = undefined;
-  const [openings, setOpenings] = useState<Opening[]>([]);
+  const [currentListOpenings, setCurrentListOpenings] = useState<Opening[]>([]);
 
-  const [openingsTrie, setOpeningsTrie] = useState< OpeningsTrie | undefined>(undefined);
-  const initializeOpenings = (chessBoard: ChessInstance): Promise<OpeningsTrie> => {
+  const initializeOpenings = (chessBoard: ChessInstance): Promise<[OpeningsTrie, Opening[]]> => {
     // Parse openings.tsv to create all the Opening variables
     let localOpenings: Opening[] = [];
     return fetch("/openings.tsv").then(res =>
@@ -53,14 +53,18 @@ const App: React.FC = () => {
           localOpenings.push(new Opening(dataLine));
         });
 
-        setOpenings(localOpenings);
-        return new OpeningsTrie(openings, chessBoard);
+        return [new OpeningsTrie(localOpenings, chessBoard), localOpenings];
       });
   };
 
-  initializeOpenings(chessBoard).then(data => {
-    setOpeningsTrie(data);
-  });
+  const [openingsTrie, setOpeningsTrie] = useState<OpeningsTrie | undefined>(undefined);
+
+  React.useEffect(() => {
+    initializeOpenings(chessBoard).then(val => {
+      setOpeningsTrie(val[0]);
+      setCurrentListOpenings(val[1]);
+    });
+  }, [chessBoard]);
 
   const makeComputerMove = () => {
     // Respond with computer move or display completed opening after delay
@@ -112,7 +116,7 @@ const App: React.FC = () => {
     const newOpeningState = !toggledOpening.isActive;
     openingsTrie?.toggleOpening(toggledOpening);
     
-    const newOpenings = openings.map(opening => {
+    const newOpenings = currentListOpenings.map(opening => {
       if (opening.name === toggledOpening.name && opening.eco === toggledOpening.eco) {
         return {
           ...opening,
@@ -121,7 +125,7 @@ const App: React.FC = () => {
       }
       return opening;
     });
-    setOpenings(newOpenings);
+    setCurrentListOpenings(newOpenings);
   };
 
   return (
@@ -140,7 +144,7 @@ const App: React.FC = () => {
         }
       />
       <button onClick={() => onFlipBoard()}>Flip</button>
-      <OpeningsList openings={openings} toggleOpening={toggleOpening} />
+      <OpeningsList openings={currentListOpenings} toggleOpening={toggleOpening} />
     </div>
   );
 };

@@ -16,7 +16,7 @@ export const OpeningItem: React.FC<Props> = ({ opening, toggleOpening }) => {
       > */}
         <input
           type="checkbox"
-          checked={opening.isActive}
+          defaultChecked={opening.isActive}
           onClick={() => {
             toggleOpening(opening);
           }}

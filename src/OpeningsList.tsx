@@ -11,7 +11,7 @@ export const OpeningsList: React.FC<Props> = ({ openings, toggleOpening }) => {
   return (
     <ul>
       {openings.map(opening => (
-        <OpeningItem key={opening.eco + opening.name} opening={opening} toggleOpening={toggleOpening} />
+        <OpeningItem key={opening.name + opening.fen} opening={opening} toggleOpening={toggleOpening} />
       ))}
     </ul>
   );
