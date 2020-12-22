@@ -4,21 +4,9 @@ import Chessboard from "chessboardjsx";
 import { ChessInstance, ShortMove } from "chess.js";
 import { OpeningsTrie } from "./OpeningsTrie";
 import { Opening } from "./Opening";
+import { OpeningsList } from './OpeningsList';
 
 const Chess = require("chess.js");
-
-function InitializeOpenings(chessBoard: ChessInstance): Promise<OpeningsTrie> {
-  // Parse openings.tsv to create all the Opening variables
-  let openings: Opening[] = [];
-  return fetch("/openings.tsv").then(res =>
-    res.text()).then(data => {
-      data.split('\n').forEach(dataLine => {
-        openings.push(new Opening(dataLine));
-      });
-
-      return new OpeningsTrie(openings, chessBoard);
-    });
-}
 
 // Test function for validating enabling/disabling openings
 // function enableAndDisableOpenings(openingsTrie: OpeningsTrie, openings: Opening[]) {
@@ -44,6 +32,9 @@ function announceOpeningAndReset(openingsTrie: OpeningsTrie, chessBoard: ChessIn
   });
 }
 
+let computerMoveTimer: NodeJS.Timer | undefined = undefined;
+let isUsersTurn = true;
+
 const App: React.FC = () => {
   const [chessBoard] = useState<ChessInstance>(
     new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
@@ -51,13 +42,29 @@ const App: React.FC = () => {
 
   const [fen, setFen] = useState(chessBoard.fen());
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
-  let isUsersTurn = true;
-  let computerMoveTimer: NodeJS.Timer | undefined = undefined;
+  const [currentListOpenings, setCurrentListOpenings] = useState<Opening[]>([]);
 
-  const [openingsTrie, setOpeningsTrie] = useState< OpeningsTrie | undefined>(undefined);
-  InitializeOpenings(chessBoard).then(data => {
-    setOpeningsTrie(data);
-  });
+  const initializeOpenings = (chessBoard: ChessInstance): Promise<[OpeningsTrie, Opening[]]> => {
+    // Parse openings.tsv to create all the Opening variables
+    let localOpenings: Opening[] = [];
+    return fetch("/openings.tsv").then(res =>
+      res.text()).then(data => {
+        data.split('\n').forEach(dataLine => {
+          localOpenings.push(new Opening(dataLine));
+        });
+
+        return [new OpeningsTrie(localOpenings, chessBoard), localOpenings];
+      });
+  };
+
+  const [openingsTrie, setOpeningsTrie] = useState<OpeningsTrie | undefined>(undefined);
+
+  React.useEffect(() => {
+    initializeOpenings(chessBoard).then(val => {
+      setOpeningsTrie(val[0]);
+      setCurrentListOpenings(val[1]);
+    });
+  }, [chessBoard]);
 
   const makeComputerMove = () => {
     // Respond with computer move or display completed opening after delay
@@ -105,6 +112,22 @@ const App: React.FC = () => {
     }
   };
 
+  const toggleOpening = (toggledOpening: Opening) => {
+    const newOpeningState = !toggledOpening.isActive;
+    openingsTrie?.toggleOpening(toggledOpening);
+    
+    const newOpenings = currentListOpenings.map(opening => {
+      if (opening.name === toggledOpening.name && opening.eco === toggledOpening.eco) {
+        return {
+          ...opening,
+          isActive: newOpeningState,
+        };
+      }
+      return opening;
+    });
+    setCurrentListOpenings(newOpenings);
+  };
+
   return (
     <div className="flex-center">
       <h1>Random Chess</h1>
@@ -121,6 +144,7 @@ const App: React.FC = () => {
         }
       />
       <button onClick={() => onFlipBoard()}>Flip</button>
+      <OpeningsList openings={currentListOpenings} toggleOpening={toggleOpening} />
     </div>
   );
 };

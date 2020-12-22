@@ -67,6 +67,10 @@ export class OpeningsTrie {
       return this.getCurrentTrieNode().openings.filter(op => op.isActive);
     }
 
+    toggleOpening(opening: Opening) {
+      this.setOpeningEnabledState(opening, !opening.isActive);
+    }
+
     enableOpening(opening: Opening) {
       this.setOpeningEnabledState(opening, true);
     }
