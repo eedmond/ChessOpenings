@@ -2,6 +2,8 @@ import { Opening } from "./Opening";
 import { TrieNode } from "./TrieNode";
 import { ChessInstance, ShortMove, Square } from "chess.js";
 
+type TrieHandler = (node: TrieNode) => void;
+
 export class OpeningsTrie {
     // Referenced to know the state of the board and the moves made
     chessBoard: ChessInstance;
@@ -77,6 +79,35 @@ export class OpeningsTrie {
 
     disableOpening(opening: Opening) {
       this.setOpeningEnabledState(opening, false);
+    }
+
+    enableAllOpenings() {
+      this.forEachNode(node => {
+        node.isActive = true;
+        node.openings.forEach(opening => {
+          opening.isActive = true;
+        });
+      });
+    }
+
+    disableAllOpenings() {
+      this.forEachNode(node => {
+        node.isActive = false;
+        node.openings.forEach(opening => {
+          opening.isActive = false;
+        });
+      });
+    }
+
+    private forEachNode(handler: TrieHandler) {
+      this.forEachNodeHelper(this.rootNode, handler);
+    }
+
+    private forEachNodeHelper(node: TrieNode, handler: TrieHandler) {
+      handler(node);
+      Array.from(node.nextMoves.values()).forEach(node => {
+        this.forEachNodeHelper(node, handler);
+      })
     }
 
     private setOpeningEnabledState(opening: Opening, newisOpeningEnabled: boolean) {

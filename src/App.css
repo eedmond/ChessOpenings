@@ -28,9 +28,12 @@
   color: #61dafb;
 }
 
-.flex-center {
-  align-items: center;
-  justify-content: center;
+.horizontal-stack {
+  display:flex;
+}
+
+.center-contents {
+  justify-content:center;
 }
 
 @keyframes App-logo-spin {
