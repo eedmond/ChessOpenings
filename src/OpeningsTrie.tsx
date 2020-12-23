@@ -7,10 +7,12 @@ type TrieHandler = (node: TrieNode) => void;
 export class OpeningsTrie {
     // Referenced to know the state of the board and the moves made
     chessBoard: ChessInstance;
+    allOpenings: Opening[];
     rootNode: TrieNode = new TrieNode();
   
     constructor(openings: Opening[], chess: ChessInstance) {
       this.rootNode.isActive = true;
+      this.allOpenings = openings;
 
       openings.forEach(value => {
           this.addOpening(value);
