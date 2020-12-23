@@ -5,18 +5,9 @@ import { ChessInstance, ShortMove } from "chess.js";
 import { OpeningsTrie } from "./OpeningsTrie";
 import { Opening } from "./Opening";
 import { OpeningsList } from './OpeningsList';
+import { CurrentPossibleOpenings } from './CurrentPossibleOpeningsList';
 
 const Chess = require("chess.js");
-
-// Test function for validating enabling/disabling openings
-// function enableAndDisableOpenings(openingsTrie: OpeningsTrie, openings: Opening[]) {
-//   openings.forEach(opening => {
-//     openingsTrie.disableOpening(opening);
-//   })
-
-//   openingsTrie.enableOpening(openings[2]);
-//   openingsTrie.enableOpening(openings[200]);
-// }
 
 function makeMove(move: ShortMove, chessBoard: ChessInstance, setFen: React.Dispatch<React.SetStateAction<string>>) {
   chessBoard.move(move);
@@ -34,7 +25,7 @@ const App: React.FC = () => {
   const [fen, setFen] = useState(chessBoard.fen());
   const [isLineCompleted, setIsLineCompleted] = useState(false);
   const [orientation, setOrientation] = useState<'white' | 'black'>('white');
-  const [currentListOpenings, setCurrentListOpenings] = useState<Opening[]>([]);
+  const [searchListOpenings, setSearchListOpenings] = useState<Opening[]>([]);
   const [currentCompletedOpenings, setCurrentCompletedOpenings] = useState<Opening[]>([]);
 
   const initializeOpenings = (chessBoard: ChessInstance): Promise<[OpeningsTrie, Opening[]]> => {
@@ -55,7 +46,7 @@ const App: React.FC = () => {
   React.useEffect(() => {
     initializeOpenings(chessBoard).then(val => {
       setOpeningsTrie(val[0]);
-      setCurrentListOpenings(val[1]);
+      setSearchListOpenings(val[1]);
     });
   }, [chessBoard]);
 
@@ -133,8 +124,8 @@ const App: React.FC = () => {
     const newOpeningState = !toggledOpening.isActive;
     openingsTrie?.toggleOpening(toggledOpening);
     
-    const newOpenings = currentListOpenings.map(opening => {
-      if (opening.name === toggledOpening.name && opening.eco === toggledOpening.eco) {
+    const newOpenings = searchListOpenings.map(opening => {
+      if (opening.name === toggledOpening.name && opening.fen === toggledOpening.fen) {
         return {
           ...opening,
           isActive: newOpeningState,
@@ -142,86 +133,103 @@ const App: React.FC = () => {
       }
       return opening;
     });
-    setCurrentListOpenings(newOpenings);
+    setSearchListOpenings(newOpenings);
   };
 
   const onClearOpenings = () => {
     openingsTrie!.disableAllOpenings();
     
-    const newOpenings = currentListOpenings.map(opening => {
+    const newOpenings = searchListOpenings.map(opening => {
       return {
         ...opening,
         isActive: false,
       };
     });
-    setCurrentListOpenings(newOpenings);
+    setSearchListOpenings(newOpenings);
   };
 
   const onSelectAllOpenings = () => {
     openingsTrie!.enableAllOpenings();
     
-    const newOpenings = openingsTrie!.allOpenings.map(opening => {
+    const newOpenings = searchListOpenings.map(opening => {
       return {
         ...opening,
         isActive: true,
       };
     });
-    setCurrentListOpenings(newOpenings);
+    setSearchListOpenings(newOpenings);
   };
 
   const selectOpenings = (searchString: string) => {
     openingsTrie!.disableAllOpenings();
     
-    const newOpenings = openingsTrie!.allOpenings.filter(opening => {
-      return opening.name.startsWith(searchString);
+    const newOpenings = searchListOpenings.map(opening => {
+      if (opening.name.startsWith(searchString)) {
+        openingsTrie?.enableOpening(opening);
+        return {
+          ...opening,
+          isActive: true,
+        };
+      } else {
+        openingsTrie?.disableOpening(opening);
+        return {
+          ...opening,
+          isActive: false,
+        };
+      }
     });
 
-    newOpenings.forEach(opening => {
-      openingsTrie?.enableOpening(opening);
-    });
-
-    setCurrentListOpenings(newOpenings);
+    setSearchListOpenings(newOpenings);
   }
 
   return (
-    <div className="horizontal-stack">
-      <div>
-        <h3>All Openings</h3>
-        <OpeningsList openings={currentListOpenings} toggleOpening={toggleOpening} />
-        <div className="horizontal-stack center-contents">
-          <button onClick={() => onClearOpenings()}>Clear</button>
-          <button onClick={() => onSelectAllOpenings()}>Select all</button>
+    <div>
+      <div className="horizontal-stack">
+        <div>
+          <h3>All Openings</h3>
+          <OpeningsList openings={searchListOpenings} toggleOpening={toggleOpening} />
+          <div className="horizontal-stack center-contents">
+            <button onClick={() => onClearOpenings()}>Clear</button>
+            <button onClick={() => onSelectAllOpenings()}>Select all</button>
+          </div>
+          <div className="horizontal-stack center-contents">
+            <button onClick={() => selectOpenings("Caro-Kann")}>Caro-Kann</button>
+            <button onClick={() => selectOpenings("Sicilian")}>Sicilian</button>
+            <button onClick={() => selectOpenings("Italian Game")}>Italian</button>
+            <button onClick={() => selectOpenings("Ruy Lopez")}>Ruy Lopez</button>
+            <button onClick={() => selectOpenings("Queen's Gambit")}>Queen's Gambit</button>
+          </div>
         </div>
-        <div className="horizontal-stack center-contents">
-          <button onClick={() => selectOpenings("Caro-Kann")}>Caro-Kann</button>
-          <button onClick={() => selectOpenings("Sicilian")}>Sicilian</button>
-          <button onClick={() => selectOpenings("Italian Game")}>Italian</button>
-          <button onClick={() => selectOpenings("Ruy Lopez")}>Ruy Lopez</button>
-          <button onClick={() => selectOpenings("Queen's Gambit")}>Queen's Gambit</button>
+        <div>
+          <Chessboard
+            orientation={orientation}
+            width={400}
+            position={fen}
+            onDrop={(move) =>
+              handleMove({
+                from: move.sourceSquare,
+                to: move.targetSquare,
+                promotion: "q",
+              })
+            }
+          />
+          <div className="horizontal-stack center-contents">
+            <button onClick={() => onFlipBoard()}>Flip</button>
+            <button onClick={() => onResetBoard()}>Reset</button>
+          </div>
+        </div>
+        <div>
+          <h3>Completed Openings</h3>
+          <h4 style={{display: isLineCompleted ? "block" : "none"}}>No more moves to make!</h4>
+          <OpeningsList openings={currentCompletedOpenings} toggleOpening={toggleOpening} />
         </div>
       </div>
-      <div>
-        <Chessboard
-          orientation={orientation}
-          width={400}
-          position={fen}
-          onDrop={(move) =>
-            handleMove({
-              from: move.sourceSquare,
-              to: move.targetSquare,
-              promotion: "q",
-            })
-          }
-        />
-        <div className="horizontal-stack center-contents">
-          <button onClick={() => onFlipBoard()}>Flip</button>
-          <button onClick={() => onResetBoard()}>Reset</button>
-        </div>
-      </div>
-      <div>
-        <h3>Completed Openings</h3>
-        <h4 style={{display: isLineCompleted ? "block" : "none"}}>No more moves to make!</h4>
-        <OpeningsList openings={currentCompletedOpenings} toggleOpening={toggleOpening} />
+      <div className="horizontal-stack center-contents">
+        <CurrentPossibleOpenings
+          fen={fen}
+          searchListOpenings={searchListOpenings}
+          openingsTrie={openingsTrie}
+          toggleOpening={toggleOpening}/>
       </div>
     </div>
   );

@@ -63,7 +63,13 @@ export class OpeningsTrie {
     // Returns the list of (incomplete) openings that are possible from the current move sequence
     getPossibleOpeningsFromCurrentPosition(): Opening[] {
       const currentNode = this.getCurrentTrieNode();
-      return this.getPossibleOpeningsUnderNode(currentNode);
+
+      if (currentNode == this.rootNode) {
+        // Optimized route to return all openings rather than building it recursively
+        return this.allOpenings.filter(op => op.isActive);
+      } else {
+        return this.getPossibleOpeningsUnderNode(currentNode);
+      }
     }
   
     // Returns the list of openings that are just completed from the current move sequence
@@ -107,9 +113,9 @@ export class OpeningsTrie {
 
     private forEachNodeHelper(node: TrieNode, handler: TrieHandler) {
       handler(node);
-      Array.from(node.nextMoves.values()).forEach(node => {
-        this.forEachNodeHelper(node, handler);
-      })
+      for (let child of node.nextMoves.values()) {
+        this.forEachNodeHelper(child, handler);
+      }
     }
 
     private setOpeningEnabledState(opening: Opening, newisOpeningEnabled: boolean) {
@@ -117,7 +123,7 @@ export class OpeningsTrie {
 
       // Find the specific opening at this node and set its active state
       nodeForOpening.openings.find(op => (op.name === opening.name) &&
-        (op.eco === opening.eco))!.isActive = newisOpeningEnabled;
+        (op.fen === opening.fen))!.isActive = newisOpeningEnabled;
 
       // Set the active state of the entire node
       nodeForOpening.isActive = newisOpeningEnabled ||
@@ -192,20 +198,15 @@ export class OpeningsTrie {
 
     private getPossibleOpeningsUnderNode(currentNode: TrieNode): Opening[] {
       let openings: Opening[] = [];
-      let iterator: IteratorResult<TrieNode, any>;
+      
+      for (let node of currentNode.nextMoves.values()) {
 
-      do {
-        iterator = currentNode.nextMoves.values().next();
-        if (iterator.done) {
-          break;
+        openings.push(...(node.openings).filter(op => op.isActive));
+
+        if (node.isActive) {
+          openings.push(...this.getPossibleOpeningsUnderNode(node));
         }
-
-        openings.push(...(iterator.value.openings).filter(op => op.isActive));
-
-        if (iterator.value.isActive) {
-          openings.push(...this.getPossibleOpeningsUnderNode(iterator.value));
-        }
-      } while(!iterator.done);
+      }
 
       return openings;
     }
