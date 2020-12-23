@@ -148,7 +148,7 @@ const App: React.FC = () => {
   const onClearOpenings = () => {
     openingsTrie!.disableAllOpenings();
     
-    const newOpenings = openingsTrie!.allOpenings.map(opening => {
+    const newOpenings = currentListOpenings.map(opening => {
       return {
         ...opening,
         isActive: false,
