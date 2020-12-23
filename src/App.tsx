@@ -112,6 +112,21 @@ const App: React.FC = () => {
     }
   };
 
+  const onResetBoard = () => {
+    chessBoard.reset();
+    setFen(chessBoard.fen());
+
+    if (computerMoveTimer) {
+      clearTimeout(computerMoveTimer);
+      computerMoveTimer = undefined;
+    }
+
+    isUsersTurn = (orientation === 'white');
+    if (!isUsersTurn) {
+      makeComputerMove();
+    }  
+  };
+
   const toggleOpening = (toggledOpening: Opening) => {
     const newOpeningState = !toggledOpening.isActive;
     openingsTrie?.toggleOpening(toggledOpening);
@@ -128,23 +143,58 @@ const App: React.FC = () => {
     setCurrentListOpenings(newOpenings);
   };
 
+  const onClearOpenings = () => {
+    openingsTrie?.disableAllOpenings();
+    
+    const newOpenings = currentListOpenings.map(opening => {
+      return {
+        ...opening,
+        isActive: false,
+      };
+    });
+    setCurrentListOpenings(newOpenings);
+  };
+
+  const onSelectAllOpenings = () => {
+    openingsTrie?.enableAllOpenings();
+    
+    const newOpenings = currentListOpenings.map(opening => {
+      return {
+        ...opening,
+        isActive: true,
+      };
+    });
+    setCurrentListOpenings(newOpenings);
+  };
+
   return (
-    <div className="flex-center">
-      <h1>Random Chess</h1>
-      <Chessboard
-        orientation={orientation}
-        width={400}
-        position={fen}
-        onDrop={(move) =>
-          handleMove({
-            from: move.sourceSquare,
-            to: move.targetSquare,
-            promotion: "q",
-          })
-        }
-      />
-      <button onClick={() => onFlipBoard()}>Flip</button>
-      <OpeningsList openings={currentListOpenings} toggleOpening={toggleOpening} />
+    <div className="horizontal-stack">
+      <div>
+        <h3>All Openings</h3>
+        <OpeningsList openings={currentListOpenings} toggleOpening={toggleOpening} />
+        <div className="horizontal-stack center-contents">
+          <button onClick={() => onClearOpenings()}>Clear</button>
+          <button onClick={() => onSelectAllOpenings()}>Select all</button>
+        </div>
+      </div>
+      <div>
+        <Chessboard
+          orientation={orientation}
+          width={400}
+          position={fen}
+          onDrop={(move) =>
+            handleMove({
+              from: move.sourceSquare,
+              to: move.targetSquare,
+              promotion: "q",
+            })
+          }
+        />
+        <div className="horizontal-stack center-contents">
+          <button onClick={() => onFlipBoard()}>Flip</button>
+          <button onClick={() => onResetBoard()}>Reset</button>
+        </div>
+      </div>
     </div>
   );
 };
