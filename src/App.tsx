@@ -217,19 +217,19 @@ const App: React.FC = () => {
             <button onClick={() => onFlipBoard()}>Flip</button>
             <button onClick={() => onResetBoard()}>Reset</button>
           </div>
+          <div className="horizontal-stack center-contents">
+            <CurrentPossibleOpenings
+              fen={fen}
+              searchListOpenings={searchListOpenings}
+              openingsTrie={openingsTrie}
+              toggleOpening={toggleOpening}/>
+          </div>
         </div>
         <div>
           <h3>Completed Openings</h3>
           <h4 style={{display: isLineCompleted ? "block" : "none"}}>No more moves to make!</h4>
           <OpeningsList openings={currentCompletedOpenings} toggleOpening={toggleOpening} />
         </div>
-      </div>
-      <div className="horizontal-stack center-contents">
-        <CurrentPossibleOpenings
-          fen={fen}
-          searchListOpenings={searchListOpenings}
-          openingsTrie={openingsTrie}
-          toggleOpening={toggleOpening}/>
       </div>
     </div>
   );

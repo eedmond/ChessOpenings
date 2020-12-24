@@ -64,7 +64,7 @@ export class OpeningsTrie {
     getPossibleOpeningsFromCurrentPosition(): Opening[] {
       const currentNode = this.getCurrentTrieNode();
 
-      if (currentNode == this.rootNode) {
+      if (currentNode === this.rootNode) {
         // Optimized route to return all openings rather than building it recursively
         return this.allOpenings.filter(op => op.isActive);
       } else {
