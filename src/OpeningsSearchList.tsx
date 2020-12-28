@@ -15,6 +15,8 @@ let searchInputTimer: NodeJS.Timer | undefined = undefined;
 
 export const OpeningsSearchList: React.FC<Props> = ({ searchListOpenings, setSearchListOpenings, openingsTrie, toggleOpening }) => {
     const [searchString, setSearchString] = useState<string>("");
+    const [isUsingStartsWithSearch, setIsUsingStartsWithSearch] = useState<boolean>(false);
+    const [includeGambits, setIncludeGambits] = useState<boolean>(true);
 
     function onClearOpenings() {
         openingsTrie!.disableAllOpenings();
@@ -71,7 +73,7 @@ export const OpeningsSearchList: React.FC<Props> = ({ searchListOpenings, setSea
         setSearchListOpenings(newOpenings);
     }
     
-    const selectOpenings = (searchString: string) => {
+    function selectOpenings(searchString: string) {
         openingsTrie!.disableAllOpenings();
         
         const newOpenings = searchListOpenings.map(opening => {
@@ -93,15 +95,25 @@ export const OpeningsSearchList: React.FC<Props> = ({ searchListOpenings, setSea
         setSearchListOpenings(newOpenings);
     }
     
-    const filterOpenings = (searchString: string) => {
-        const newOpenings = openingsTrie?.allOpenings.filter(opening => {
-          return (opening.name.toLowerCase().startsWith(searchString.toLowerCase()));
+    function filterOpenings(searchString: string, startsWith = isUsingStartsWithSearch, useGambits = includeGambits) {
+        let newOpenings = openingsTrie?.allOpenings.filter(opening => {
+            if (startsWith) {
+                return (opening.name.toLowerCase().startsWith(searchString.toLowerCase()));
+            } else {
+                return (opening.name.toLowerCase().includes(searchString.toLowerCase()));
+            }
         });
+
+        if (!useGambits) {
+            newOpenings = newOpenings?.filter(opening => {
+                return (!opening.name.includes("Gambit"));
+            })
+        }
     
         setSearchListOpenings(newOpenings!);
     }
 
-    const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
         setSearchString(event.target.value);
 
         if (searchInputTimer) {
@@ -109,8 +121,25 @@ export const OpeningsSearchList: React.FC<Props> = ({ searchListOpenings, setSea
         }
 
         searchInputTimer = setTimeout(() => {
+            searchInputTimer = undefined;
             filterOpenings(event.target.value);
         }, 500);
+    }
+
+    function onStartsWithToggled() {
+        setIsUsingStartsWithSearch(!isUsingStartsWithSearch);
+
+        if ((searchString.length > 0) && searchInputTimer === undefined) {
+            filterOpenings(searchString, !isUsingStartsWithSearch);
+        }
+    }
+
+    function onIncludeGambitsToggled() {
+        setIncludeGambits(!includeGambits);
+
+        if ((searchString.length > 0) && searchInputTimer === undefined) {
+            filterOpenings(searchString, isUsingStartsWithSearch, !includeGambits);
+        }
     }
 
     return (
@@ -119,6 +148,14 @@ export const OpeningsSearchList: React.FC<Props> = ({ searchListOpenings, setSea
         <OpeningsList openings={searchListOpenings} toggleOpening={toggleOpening} />
         <div className="horizontal-stack center-contents">
             <input type="text" value={searchString} onChange={handleChange} />
+            <div className="horizontal-stack center-contents">
+                <input type="checkbox" defaultChecked={isUsingStartsWithSearch} onClick={onStartsWithToggled} />
+                <label>Starts with</label>
+            </div>
+            <div className="horizontal-stack center-contents">
+                <input type="checkbox" defaultChecked={includeGambits} onClick={onIncludeGambitsToggled} />
+                <label>Gambits</label>
+            </div>
         </div>
         <div className="horizontal-stack center-contents">
           <button onClick={() => onClearOpenings()}>Clear all</button>
