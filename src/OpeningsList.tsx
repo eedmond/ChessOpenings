@@ -4,11 +4,8 @@ import { Opening } from './Opening';
 
 export type ToggleOpening = (toggleOpening: Opening) => void;
 
-// The item renderer is declared outside of the list-rendering component.
-// So it has no way to directly access the items array.
 function ItemRenderer({ data, index, style }: { data: Opening[], index: number, style: React.CSSProperties | undefined },
   toggleOpening: ToggleOpening) {
-  // Access the items array using the "data" prop:
   const item = data[index];
 
   return (

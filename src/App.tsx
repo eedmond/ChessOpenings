@@ -7,6 +7,7 @@ import { Opening } from "./Opening";
 import { OpeningsList } from './OpeningsList';
 import { OpeningsSearchList } from './OpeningsSearchList';
 import { CurrentPossibleOpenings } from './CurrentPossibleOpeningsList';
+import { NextMoves } from './NextMoves';
 
 const Chess = require("chess.js");
 
@@ -140,10 +141,15 @@ const App: React.FC = () => {
   return (
     <div>
       <div className="horizontal-stack">
-        <OpeningsSearchList searchListOpenings={searchListOpenings}
-          setSearchListOpenings={setSearchListOpenings}
-          openingsTrie={openingsTrie}
-          toggleOpening={toggleOpening} />
+        <div>
+          <OpeningsSearchList searchListOpenings={searchListOpenings}
+            setSearchListOpenings={setSearchListOpenings}
+            openingsTrie={openingsTrie}
+            toggleOpening={toggleOpening} />
+          <div>
+            <NextMoves fen={fen} searchListOpenings={searchListOpenings} openingsTrie={openingsTrie} />
+          </div>
+        </div>
         <div>
           <Chessboard
             orientation={orientation}

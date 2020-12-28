@@ -11,7 +11,7 @@ export class OpeningsTrie {
     rootNode: TrieNode = new TrieNode();
   
     constructor(openings: Opening[], chess: ChessInstance) {
-      this.rootNode.isActive = true;
+      this.rootNode.isActive = false;
       this.allOpenings = openings;
 
       openings.forEach(value => {
@@ -29,12 +29,18 @@ export class OpeningsTrie {
                 currentNode.nextMoves.set(`${move.from}${move.to}`, new TrieNode());
             }
 
-            currentNode = currentNode.nextMoves.get(`${move.from}${move.to}`)!;
-
             if (opening.isActive) {
               currentNode.isActive = true;
+              currentNode.numberOfActiveOpeningsUnder++;
+              currentNode.totalNumberOfOpeningsUnder++;
             }
+
+            currentNode = currentNode.nextMoves.get(`${move.from}${move.to}`)!;
         });
+
+        if (opening.isActive) {
+          currentNode.isActive = true;
+        }
 
         currentNode.openings.push(opening);
     }
@@ -92,6 +98,7 @@ export class OpeningsTrie {
     enableAllOpenings() {
       this.forEachNode(node => {
         node.isActive = true;
+        node.numberOfActiveOpeningsUnder = node.totalNumberOfOpeningsUnder;
         node.openings.forEach(opening => {
           opening.isActive = true;
         });
@@ -101,6 +108,7 @@ export class OpeningsTrie {
     disableAllOpenings() {
       this.forEachNode(node => {
         node.isActive = false;
+        node.numberOfActiveOpeningsUnder = 0;
         node.openings.forEach(opening => {
           opening.isActive = false;
         });
@@ -119,7 +127,7 @@ export class OpeningsTrie {
     }
 
     private setOpeningEnabledState(opening: Opening, newisOpeningEnabled: boolean) {
-      const nodeForOpening = this.getEndNodeForOpening(opening, newisOpeningEnabled);
+      const nodeForOpening = this.getEndNodeForUpdatedOpening(opening, newisOpeningEnabled);
 
       // Find the specific opening at this node and set its active state
       nodeForOpening.openings.find(op => (op.name === opening.name) &&
@@ -129,51 +137,26 @@ export class OpeningsTrie {
       nodeForOpening.isActive = newisOpeningEnabled ||
         this.doesNodeHaveAnActiveOpening(nodeForOpening) ||
         this.doesNodeHaveAnActiveNextNode(nodeForOpening);
-
-      if (!nodeForOpening.isActive) {
-        this.validateDisabledNodesToOpening(opening);
-      }
     }
 
-    // Returns the node corresponding to the end of the specified opening.
-    // Optionally sets all nodes to this opening as active. This is useful
-    // if the opening is becoming active since all nodes leading to it then
-    // must be set to active as well.
-    private getEndNodeForOpening(opening: Opening, setAllToActive?: boolean): TrieNode {
+    // Returns the node corresponding to the end of the specified opening that was just enabled
+    // or just disabled. It updates the count of active openings under each node on the way down
+    // to the opening and updates the active state of each node accordingly.
+    private getEndNodeForUpdatedOpening(opening: Opening, isNewOpeningEnabled: boolean): TrieNode {
       let currentNode = this.rootNode;
 
       opening.moves.forEach(move => {
-        currentNode = currentNode.nextMoves.get(this.moveToString(move))!;
-
-        // If we're getting a node for an opening we want to set to active,
-        // then all nodes leading to this opening should also be set to active.
-        if (setAllToActive?.valueOf()) {
+        if (isNewOpeningEnabled) {
           currentNode.isActive = true;
+          currentNode.numberOfActiveOpeningsUnder++;
+        } else if (--currentNode.numberOfActiveOpeningsUnder === 0 && !this.doesNodeHaveAnActiveOpening(currentNode)) {
+          currentNode.isActive = false;
         }
+
+        currentNode = currentNode.nextMoves.get(this.moveToString(move))!;
       });
 
       return currentNode;
-    }
-
-    private validateDisabledNodesToOpening(opening: Opening) {
-      const nodeStack = [this.rootNode];
-
-      opening.moves.forEach(move => {
-        const bottomNode = nodeStack[nodeStack.length - 1];
-        nodeStack.push(bottomNode.nextMoves.get(this.moveToString(move))!);
-      });
-
-      while (nodeStack.length > 0) {
-        const bottomNode = nodeStack.pop()!;
-
-        bottomNode.isActive = this.doesNodeHaveAnActiveOpening(bottomNode) ||
-          this.doesNodeHaveAnActiveNextNode(bottomNode);
-
-        // Stop working up the stack when a node is active since this is just chaining disables
-        if (bottomNode.isActive) {
-          break;
-        }
-      }
     }
     
     private doesNodeHaveAnActiveOpening(node: TrieNode): boolean {
@@ -186,7 +169,7 @@ export class OpeningsTrie {
     }
 
     // Utility that returns the trie node given the current state of the board
-    private getCurrentTrieNode(): TrieNode {
+    public getCurrentTrieNode(): TrieNode {
       let currentNode = this.rootNode;
 
       this.chessBoard.history({ verbose: true }).forEach(move => {
