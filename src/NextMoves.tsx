@@ -8,7 +8,7 @@ function GetItemFromData(index: number, data: OpeningsTrie): [string, TrieNode] 
     const currentNode: TrieNode = data.getCurrentTrieNode();
     let nextMoves = Array.from(currentNode.nextMoves.entries());
     nextMoves = nextMoves.sort((a, b) => {
-        return b[1].numberOfActiveOpeningsUnder - a[1].numberOfActiveOpeningsUnder;
+        return b[1].numberOfActiveOpeningsHereAndUnder() - a[1].numberOfActiveOpeningsHereAndUnder();
     });
 
     return nextMoves[index];
@@ -19,7 +19,7 @@ function ItemRenderer({ index, data, style }: { index: number, data: OpeningsTri
 
     return (
       <div style={style}>
-        {item[0]} ({item[1].numberOfActiveOpeningsUnder})
+        {item[0]} ({item[1].numberOfActiveOpeningsHereAndUnder()})
       </div>
     );
 }

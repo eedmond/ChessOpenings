@@ -6,4 +6,8 @@ export class TrieNode {
     isActive = false;
     numberOfActiveOpeningsUnder: number = 0;
     totalNumberOfOpeningsUnder: number = 0;
+
+    public numberOfActiveOpeningsHereAndUnder(): number {
+        return this.numberOfActiveOpeningsUnder + this.openings.filter(op => op.isActive).length;
+    }
 }

@@ -53,17 +53,32 @@ export class OpeningsTrie {
   
     // Returns a computer move selected randomly from the available openings
     getNextMove(): ShortMove {
-      const nextMoves = this.getCurrentTrieNode().nextMoves;
+      const currentNode = this.getCurrentTrieNode();
+      let nextMoves = Array.from(currentNode.nextMoves.entries());
+      nextMoves = nextMoves.sort((a, b) => {
+        return (b[1].numberOfActiveOpeningsUnder + b[1].openings.filter(op => op.isActive).length) - (a[1].numberOfActiveOpeningsUnder +  + a[1].openings.filter(op => op.isActive).length);
+      });
 
-      let moveStrings = Array.from(this.getCurrentTrieNode().nextMoves.keys());
-      moveStrings = moveStrings.filter(move => nextMoves.get(move)!.isActive);
-      return this.stringToMove(moveStrings[Math.floor(Math.random() * moveStrings.length)]);
+      let indicator = this.randomIntFromInterval(1, currentNode.numberOfActiveOpeningsUnder);
+      for (let move of nextMoves) {
+        indicator -= (move[1].numberOfActiveOpeningsUnder + move[1].openings.filter(op => op.isActive).length);
+
+        if (indicator <= 0) {
+          return this.stringToMove(move[0]);
+        }
+      }
+      
+      throw Error("Invalid scenario, selection of random move failed");
     }
   
     // Returns true if there are any remaining moves that follow saved openings lines
     hasMovesToMake() {
       const nextMoves = Array.from(this.getCurrentTrieNode().nextMoves.values());
       return nextMoves.filter(node => node.isActive).length > 0;
+    }
+
+    private randomIntFromInterval(min: number, max: number) {
+      return Math.floor(Math.random() * (max - min + 1) + min);
     }
   
     // Returns the list of (incomplete) openings that are possible from the current move sequence
@@ -127,6 +142,8 @@ export class OpeningsTrie {
     }
 
     private setOpeningEnabledState(opening: Opening, newisOpeningEnabled: boolean) {
+      if (opening.isActive === newisOpeningEnabled) return;
+
       const nodeForOpening = this.getEndNodeForUpdatedOpening(opening, newisOpeningEnabled);
 
       // Find the specific opening at this node and set its active state
